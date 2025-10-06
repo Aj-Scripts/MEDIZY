@@ -1,0 +1,480 @@
+import { useState, useEffect } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  Button,
+  TextField,
+  MenuItem,
+  Switch,
+  FormControlLabel,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
+} from '@mui/material';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { parseISO, format } from 'date-fns';
+
+const DAYS_OF_WEEK = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday'
+];
+
+const DEFAULT_SCHEDULE = {
+  enabled: false,
+  startTime: '09:00',
+  endTime: '17:00',
+  breakStart: '13:00',
+  breakEnd: '14:00',
+  slotDuration: 30
+};
+
+const TimeSlotManager = ({ doctorId, onSave, initialSchedule }) => {
+  const [schedule, setSchedule] = useState(
+    DAYS_OF_WEEK.reduce((acc, day) => ({
+      ...acc,
+      [day]: { ...DEFAULT_SCHEDULE }
+    }), {})
+  );
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (initialSchedule) {
+      setSchedule(initialSchedule);
+    }
+  }, [initialSchedule]);
+
+  const handleDayClick = (day) => {
+    setSelectedDay(day);
+    setDialogOpen(true);
+  };
+
+  const handleSaveDay = () => {
+    setDialogOpen(false);
+  };
+
+  const handleTimeChange = (day, field, value) => {
+    setSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleToggleDay = (day) => {
+    setSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        enabled: !prev[day].enabled
+      }
+    }));
+  };
+
+  const handleSaveSchedule = () => {
+    if (onSave) {
+      onSave(schedule);
+    }
+  };
+
+  const formatTime = (time) => {
+    if (!time) return '';
+    try {
+      return format(parseISO('2000-01-01T' + time), 'hh:mm a');
+    } catch {
+      return time;
+    }
+  };
+
+  return (
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Card>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Weekly Schedule
+          </Typography>
+          <Grid container spacing={2}>
+            {DAYS_OF_WEEK.map((day) => (
+              <Grid item xs={12} key={day}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="subtitle1">{day}</Typography>
+                      <Box>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={schedule[day].enabled}
+                              onChange={() => handleToggleDay(day)}
+                              color="primary"
+                            />
+                          }
+                          label={schedule[day].enabled ? 'Available' : 'Unavailable'}
+                        />
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => handleDayClick(day)}
+                          disabled={!schedule[day].enabled}
+                        >
+                          Edit Hours
+                        </Button>
+                      </Box>
+                    </Box>
+                    {schedule[day].enabled && (
+                      <Box mt={1}>
+                        <Chip 
+                          label={`Working: ${formatTime(schedule[day].startTime)} - ${formatTime(schedule[day].endTime)}`}
+                          size="small"
+                          color="primary"
+                          sx={{ mr: 1, mb: 1 }}
+                        />
+                        <Chip
+                          label={`Break: ${formatTime(schedule[day].breakStart)} - ${formatTime(schedule[day].breakEnd)}`}
+                          size="small"
+                          color="secondary"
+                          sx={{ mb: 1 }}
+                        />
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+
+          <Box mt={2} display="flex" justifyContent="flex-end">
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSaveSchedule}
+            >
+              Save Schedule
+            </Button>
+          </Box>
+
+          <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>
+              Edit {selectedDay} Schedule
+            </DialogTitle>
+            <DialogContent>
+              {selectedDay && (
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={6}>
+                    <TimePicker
+                      label="Start Time"
+                      value={parseISO('2000-01-01T' + schedule[selectedDay].startTime)}
+                      onChange={(newValue) => {
+                        if (newValue) {
+                          handleTimeChange(selectedDay, 'startTime', format(newValue, 'HH:mm'));
+                        }
+                      }}
+                      textField={(params) => <TextField {...params} fullWidth />}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TimePicker
+                      label="End Time"
+                      value={parseISO('2000-01-01T' + schedule[selectedDay].endTime)}
+                      onChange={(newValue) => {
+                        if (newValue) {
+                          handleTimeChange(selectedDay, 'endTime', format(newValue, 'HH:mm'));
+                        }
+                      }}
+                      textField={(params) => <TextField {...params} fullWidth />}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TimePicker
+                      label="Break Start"
+                      value={parseISO('2000-01-01T' + schedule[selectedDay].breakStart)}
+                      onChange={(newValue) => {
+                        if (newValue) {
+                          handleTimeChange(selectedDay, 'breakStart', format(newValue, 'HH:mm'));
+                        }
+                      }}
+                      textField={(params) => <TextField {...params} fullWidth />}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TimePicker
+                      label="Break End"
+                      value={parseISO('2000-01-01T' + schedule[selectedDay].breakEnd)}
+                      onChange={(newValue) => {
+                        if (newValue) {
+                          handleTimeChange(selectedDay, 'breakEnd', format(newValue, 'HH:mm'));
+                        }
+                      }}
+                      textField={(params) => <TextField {...params} fullWidth />}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Slot Duration (minutes)"
+                      value={schedule[selectedDay].slotDuration}
+                      onChange={(e) => handleTimeChange(selectedDay, 'slotDuration', e.target.value)}
+                    >
+                      <MenuItem value={15}>15 minutes</MenuItem>
+                      <MenuItem value={30}>30 minutes</MenuItem>
+                      <MenuItem value={45}>45 minutes</MenuItem>
+                      <MenuItem value={60}>1 hour</MenuItem>
+                    </TextField>
+                  </Grid>
+                </Grid>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveDay} color="primary">
+                Save
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </CardContent>
+      </Card>
+    </LocalizationProvider>
+  );
+};
+
+export default TimeSlotManager;
+
+const DAYS_OF_WEEK = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday'
+];
+
+const DEFAULT_SCHEDULE = {
+  enabled: false,
+  startTime: '09:00',
+  endTime: '17:00',
+  breakStart: '13:00',
+  breakEnd: '14:00',
+  slotDuration: 30
+};
+
+const TimeSlotManager = ({ doctorId, onSave, initialSchedule }) => {
+  const [schedule, setSchedule] = useState(
+    DAYS_OF_WEEK.reduce((acc, day) => ({
+      ...acc,
+      [day]: { ...DEFAULT_SCHEDULE }
+    }), {})
+  );
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (initialSchedule) {
+      setSchedule(initialSchedule);
+    }
+  }, [initialSchedule]);
+
+  const handleDayClick = (day) => {
+    setSelectedDay(day);
+    setDialogOpen(true);
+  };
+
+  const handleSaveDay = () => {
+    setDialogOpen(false);
+  };
+
+  const handleTimeChange = (day, field, value) => {
+    setSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleToggleDay = (day) => {
+    setSchedule(prev => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        enabled: !prev[day].enabled
+      }
+    }));
+  };
+
+  const handleSaveSchedule = () => {
+    if (onSave) {
+      onSave(schedule);
+    }
+  };
+
+  const formatTime = (time) => {
+    if (!time) return '';
+    try {
+      return format(parseISO(\`2000-01-01T\${time}\`), 'hh:mm a');
+    } catch {
+      return time;
+    }
+  };
+
+  return (
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Card>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Weekly Schedule
+          </Typography>
+          <Grid container spacing={2}>
+            {DAYS_OF_WEEK.map((day) => (
+              <Grid item xs={12} key={day}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="subtitle1">{day}</Typography>
+                      <Box>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={schedule[day].enabled}
+                              onChange={() => handleToggleDay(day)}
+                              color="primary"
+                            />
+                          }
+                          label={schedule[day].enabled ? 'Available' : 'Unavailable'}
+                        />
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => handleDayClick(day)}
+                          disabled={!schedule[day].enabled}
+                        >
+                          Edit Hours
+                        </Button>
+                      </Box>
+                    </Box>
+                    {schedule[day].enabled && (
+                      <Box mt={1}>
+                        <Chip 
+                          label={`Working: ${formatTime(schedule[day].startTime)} - ${formatTime(schedule[day].endTime)}`}
+                          size="small"
+                          color="primary"
+                          sx={{ mr: 1, mb: 1 }}
+                        />
+                        <Chip
+                          label={`Break: ${formatTime(schedule[day].breakStart)} - ${formatTime(schedule[day].breakEnd)}`}
+                          size="small"
+                          color="secondary"
+                          sx={{ mb: 1 }}
+                        />
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+
+          <Box mt={2} display="flex" justifyContent="flex-end">
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSaveSchedule}
+            >
+              Save Schedule
+            </Button>
+          </Box>
+
+          <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>
+              Edit {selectedDay} Schedule
+            </DialogTitle>
+            <DialogContent>
+              {selectedDay && (
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={6}>
+                    <TimePicker
+                      label="Start Time"
+                      value={parseISO(\`2000-01-01T\${schedule[selectedDay].startTime}\`)}
+                      onChange={(newValue) => {
+                        handleTimeChange(selectedDay, 'startTime', format(newValue, 'HH:mm'));
+                      }}
+                      renderInput={(params) => <TextField {...params} fullWidth />}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TimePicker
+                      label="End Time"
+                      value={parseISO(\`2000-01-01T\${schedule[selectedDay].endTime}\`)}
+                      onChange={(newValue) => {
+                        handleTimeChange(selectedDay, 'endTime', format(newValue, 'HH:mm'));
+                      }}
+                      renderInput={(params) => <TextField {...params} fullWidth />}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TimePicker
+                      label="Break Start"
+                      value={parseISO(\`2000-01-01T\${schedule[selectedDay].breakStart}\`)}
+                      onChange={(newValue) => {
+                        handleTimeChange(selectedDay, 'breakStart', format(newValue, 'HH:mm'));
+                      }}
+                      renderInput={(params) => <TextField {...params} fullWidth />}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TimePicker
+                      label="Break End"
+                      value={parseISO(\`2000-01-01T\${schedule[selectedDay].breakEnd}\`)}
+                      onChange={(newValue) => {
+                        handleTimeChange(selectedDay, 'breakEnd', format(newValue, 'HH:mm'));
+                      }}
+                      renderInput={(params) => <TextField {...params} fullWidth />}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Slot Duration (minutes)"
+                      value={schedule[selectedDay].slotDuration}
+                      onChange={(e) => handleTimeChange(selectedDay, 'slotDuration', e.target.value)}
+                    >
+                      <MenuItem value={15}>15 minutes</MenuItem>
+                      <MenuItem value={30}>30 minutes</MenuItem>
+                      <MenuItem value={45}>45 minutes</MenuItem>
+                      <MenuItem value={60}>1 hour</MenuItem>
+                    </TextField>
+                  </Grid>
+                </Grid>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveDay} color="primary">
+                Save
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </CardContent>
+      </Card>
+    </LocalizationProvider>
+  );
+};
+
+export default TimeSlotManager;
